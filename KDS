@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>IGCM Display System - Revamp</title>
+
+<style>
+body{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin:0;
+  background:#eef1f4;
+  font-size:12px;
+  color: #333;
+}
+
+/* Layout */
+.container{
+  display:flex;
+  padding:10px;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.main{
+  width:78%;
+  padding-right: 15px;
+  overflow-y: auto;
+}
+
+.preview{
+  width:22%;
+  position: sticky;
+  top: 10px;
+  height: fit-content;
+}
+
+/* Sections */
+.section{
+  background:#fff;
+  border:1px solid #dcdcdc;
+  border-radius: 4px;
+  margin-bottom:15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.section-header{
+  background:#e9eef2;
+  padding:8px 12px;
+  font-weight:600;
+  border-bottom: 1px solid #dcdcdc;
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-body{
+  padding:12px;
+}
+
+/* Inputs */
+input[type=color]{
+  border:1px solid #ccc;
+  border-radius: 3px;
+  width:32px;
+  height:24px;
+  cursor:pointer;
+  padding: 0;
+}
+
+input[type=text], select{
+  padding:4px 8px;
+  font-size:12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.btn-add {
+  background: #00AEEF;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* Tables */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th, td{
+  border:1px solid #eaeaea;
+  padding:8px;
+  text-align:left;
+  vertical-align: middle;
+}
+th { background: #f8f9fa; font-weight: 600; color: #555; }
+
+.icon-btn { cursor: pointer; color: #e74c3c; font-size: 14px; border: none; background: none; }
+
+/* KDS CHIT PREVIEW */
+.kds {
+  background:#fff;
+  border-radius:8px;
+  width:100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+.kds-header {
+  background: #2e7d32;
+  color: #fff;
+  padding:8px;
+  display:flex;
+  justify-content:space-between;
+  font-weight:bold;
+}
+
+.kds-timer-bar {
+  background: #1b5e20;
+  color: #fff;
+  padding: 4px 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.kds-fulfillment {
+  text-align: center;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+
+.course-block {
+  margin: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.course-header {
+  background: #eee;
+  padding: 4px 8px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.item-row {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.item-main { display: flex; justify-content: space-between; font-weight: bold; }
+.item-sub { padding-left: 15px; font-size: 11px; }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="main">
+
+  <div class="section">
+    <div class="section-header">Color Control</div>
+    <div class="section-body">
+      <table>
+        <tr>
+          <th>Open (Chit BG)</th><th>Closed</th><th>Start Button</th><th>Expo Icon</th>
+          <th>Quick Serve</th><th>Non Routable</th><th>VIP Seat</th>
+        </tr>
+        <tr>
+          <td><input type="color" id="openColor" value="#ffffff" oninput="updatePreview()"></td>
+          <td><input type="color" id="closedColor" value="#cccccc"></td>
+          <td><input type="color" id="startColor" value="#8DC63F" oninput="updatePreview()"></td>
+          <td><input type="color" id="expoColor" value="#00AEEF"></td>
+          <td><input type="color" id="quickColor" value="#f5b041"></td>
+          <td><input type="color" id="nonColor" value="#e74c3c"></td>
+          <td><input type="color" id="vipColor" value="#f1c40f"></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span>Fulfillment Color Option</span>
+      <button class="btn-add" onclick="addFulfillmentRow()">+ Add Fulfillment</button>
+    </div>
+    <div class="section-body">
+      <table>
+        <thead>
+          <tr><th>Order Type</th><th>Chit Background Override</th><th>Action</th></tr>
+        </thead>
+        <tbody id="fulfillmentTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" style="border-top: 2px solid #00AEEF;">
+      <span>Item Status Colors (QSR Parity)</span>
+      <button class="btn-add" onclick="addStatusRow()">+ Add Status</button>
+    </div>
+    <div class="section-body">
+      <table id="statusTable">
+        <thead>
+          <tr><th>Item Status</th><th>Background Colour</th><th>Foreground (Auto)</th><th>Action</th></tr>
+        </thead>
+        <tbody id="statusTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Chit Styling</div>
+    <div class="section-body">
+      <table>
+        <tr><th>Label</th><th>Bold</th><th>Underline</th><th>Color</th><th>Size</th></tr>
+        <tr>
+          <td>Item</td>
+          <td><input type="checkbox" id="itemBold" onchange="updatePreview()"></td>
+          <td><input type="checkbox" id="itemUnderline" onchange="updatePreview()"></td>
+          <td><input type="color" id="itemColor" value="#000000" oninput="updatePreview()"></td>
+          <td><select id="itemSize" onchange="updatePreview()"><option value="12px">Regular</option><option value="14px">Large</option></select></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="preview">
+  <div style="font-weight: bold; margin-bottom: 10px; color: #555;">KDS EXPO PREVIEW</div>
+  
+  <div class="kds" id="kdsPreview">
+    <div class="kds-header">
+      <span>T-100234</span>
+      <span id="prev-start" style="padding:2px 8px; border-radius:4px; font-size:10px;">START</span>
+    </div>
+    <div class="kds-timer-bar">
+      <span>00:04:12</span>
+      <span>NORMAL</span>
+    </div>
+    <div class="kds-fulfillment" id="prev-fulfill">DINE IN</div>
+
+    <div class="course-block">
+        <div class="course-header">
+            <span>Course #1</span>
+            <span style="background:#fff; border:1px solid #ddd; padding:0 4px; border-radius:4px;">00:02:15</span>
+        </div>
+        <div id="prev-items-list">
+            </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* --- CONTRAST ENGINE --- */
+function getContrast(hex){
+  hex = hex.replace('#','');
+  const r = parseInt(hex.substr(0,2), 16);
+  const g = parseInt(hex.substr(2,2), 16);
+  const b = parseInt(hex.substr(4,2), 16);
+  return ((r * 299 + g * 587 + b * 114) / 1000) >= 128 ? "#000000" : "#FFFFFF";
+}
+
+/* --- PERSISTENT PREVIEW DATA --- */
+const PREVIEW_ITEMS = [
+  { name: "Cheese Burger", status: "Cooking", qty: 1, mods: ["No Onions", "Extra Cheese"], si: "★ Allergy: Nut" },
+  { name: "Large Fries", status: "Yet To Start", qty: 2, mods: [], si: "" },
+  { name: "Vanilla Shake", status: "Bumped", qty: 1, mods: ["Whipped Cream"], si: "" }
+];
+
+/* --- STATE --- */
+let activeFulfillments = [{ type: "Dine In", bg: "#d1e7dd" }];
+let activeStatusConfigs = [
+  { type: "Cooking", bg: "#F39C12" },
+  { type: "Bumped", bg: "#27AE60" }
+];
+
+/* --- FULFILLMENT LOGIC --- */
+function renderFulfillments() {
+  const tbody = document.getElementById("fulfillmentTbody");
+  tbody.innerHTML = activeFulfillments.map((f, i) => `
+    <tr>
+      <td>${f.type}</td>
+      <td><input type="color" value="${f.bg}" oninput="activeFulfillments[${i}].bg=this.value; updatePreview()"></td>
+      <td><button class="icon-btn" onclick="activeFulfillments.splice(${i},1); renderFulfillments()">🗑</button></td>
+    </tr>
+  `).join('');
+  updatePreview();
+}
+function addFulfillmentRow() { activeFulfillments.push({ type: "Take Out", bg: "#fff3cd" }); renderFulfillments(); }
+
+/* --- STATUS LOGIC --- */
+function renderStatusTable() {
+  const tbody = document.getElementById("statusTbody");
+  tbody.innerHTML = activeStatusConfigs.map((s, i) => {
+    const fg = getContrast(s.bg);
+    return `
+      <tr>
+        <td>${s.type}</td>
+        <td><input type="color" value="${s.bg}" oninput="activeStatusConfigs[${i}].bg=this.value; renderStatusTable()"></td>
+        <td><div style="background:${s.bg}; color:${fg}; padding:4px 8px; border-radius:3px; display:inline-block; font-weight:bold;">${fg}</div></td>
+        <td><button class="icon-btn" onclick="activeStatusConfigs.splice(${i},1); renderStatusTable()">🗑</button></td>
+      </tr>
+    `;
+  }).join('');
+  updatePreview();
+}
+function addStatusRow() { activeStatusConfigs.push({ type: "Yet To Start", bg: "#34495E" }); renderStatusTable(); }
+
+/* --- PREVIEW LOGIC --- */
+function updatePreview() {
+  // 1. Chit Level Colors
+  const openBg = document.getElementById("openColor").value;
+  const startBg = document.getElementById("startColor").value;
+  const chitBody = document.getElementById("kdsPreview");
+  
+  // Apply Start Button
+  const startBtn = document.getElementById("prev-start");
+  startBtn.style.background = startBg;
+  startBtn.style.color = getContrast(startBg);
+
+  // Apply Fulfillment / Open Override
+  const fulfillBar = document.getElementById("prev-fulfill");
+  if(activeFulfillments[0]) {
+    chitBody.style.background = activeFulfillments[0].bg;
+    fulfillBar.innerText = activeFulfillments[0].type;
+  } else {
+    chitBody.style.background = openBg;
+    fulfillBar.innerText = "DEFAULT";
+  }
+
+  // 2. Item List Rendering
+  const list = document.getElementById("prev-items-list");
+  const globalItemColor = document.getElementById("itemColor").value;
+  const isBold = document.getElementById("itemBold").checked ? 'bold' : 'normal';
+  const isUnderline = document.getElementById("itemUnderline").checked ? 'underline' : 'none';
+  const iSize = document.getElementById("itemSize").value;
+
+  list.innerHTML = PREVIEW_ITEMS.map(item => {
+    // Find color config for this status
+    const config = activeStatusConfigs.find(c => c.type === item.status);
+    
+    // Status BG vs Default
+    const rowBg = config ? config.bg : "transparent";
+    // Text Color: If row has BG, auto-contrast it. Else use Global Override.
+    const rowFg = rowBg !== "transparent" ? getContrast(rowBg) : globalItemColor;
+
+    return `
+      <div class="item-row" style="background: ${rowBg}; color: ${rowFg};">
+        <div class="item-main" style="font-weight: ${isBold}; text-decoration: ${isUnderline}; font-size: ${iSize};">
+          <span>${item.qty} ${item.name}</span>
+          <span>${getStatusIcon(item.status)}</span>
+        </div>
+        ${item.mods.map(m => `<div class="item-sub">↳ ${m}</div>`).join('')}
+        ${item.si ? `<div class="item-sub" style="font-style: italic;">${item.si}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function getStatusIcon(status) {
+  switch(status) {
+    case "Cooking": return "🔥";
+    case "Bumped": return "✅";
+    case "Hold": return "✋";
+    case "Voided": return "🚫";
+    default: return "⏳";
+  }
+}
+
+/* INITIALIZE */
+renderFulfillments();
+renderStatusTable();
+</script>
+
+</body>
+</html>
