@@ -268,125 +268,308 @@ th { background: #f8f9fa; font-weight: 600; color: #555; }
 </div>
 
 <script>
-/* --- CONTRAST ENGINE --- */
-function getContrast(hex){
-  hex = hex.replace('#','');
-  const r = parseInt(hex.substr(0,2), 16);
-  const g = parseInt(hex.substr(2,2), 16);
-  const b = parseInt(hex.substr(4,2), 16);
-  return ((r * 299 + g * 587 + b * 114) / 1000) >= 128 ? "#000000" : "#FFFFFF";
+/* --- WCAG CONTRAST ENGINE --- */
+
+function getLuminance(c) {
+    const sRGB = c / 255;
+
+    return sRGB <= 0.04045
+        ? sRGB / 12.92
+        : Math.pow((sRGB + 0.055) / 1.055, 2.4);
+}
+
+function getContrastRatio(rgb1, rgb2) {
+    const l1 =
+        0.2126 * getLuminance(rgb1[0]) +
+        0.7152 * getLuminance(rgb1[1]) +
+        0.0722 * getLuminance(rgb1[2]);
+
+    const l2 =
+        0.2126 * getLuminance(rgb2[0]) +
+        0.7152 * getLuminance(rgb2[1]) +
+        0.0722 * getLuminance(rgb2[2]);
+
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+function hexToRgb(hex) {
+    hex = hex.replace("#", "");
+
+    return [
+        parseInt(hex.substring(0, 2), 16),
+        parseInt(hex.substring(2, 4), 16),
+        parseInt(hex.substring(4, 6), 16)
+    ];
+}
+
+/*
+ * Prefer branded colours first if WCAG compliant.
+ * Fall back to black/white only when needed.
+ */
+function getBestForeground(backgroundHex) {
+    const preferredColours = [
+        "#0057D9", // Blue
+        "#008000", // Green
+        "#800080", // Purple
+        "#FF6600", // Orange
+        "#006666", // Teal
+        "#FF0000", // Red
+        "#FFD700"  // Gold
+    ];
+
+    const fallbackColours = [
+        "#000000",
+        "#FFFFFF"
+    ];
+
+    const WCAG_THRESHOLD = 4.5;
+    const backgroundRgb = hexToRgb(backgroundHex);
+
+    // Try preferred colours first
+    for (const colour of preferredColours) {
+        const ratio = getContrastRatio(
+            hexToRgb(colour),
+            backgroundRgb
+        );
+
+        if (ratio >= WCAG_THRESHOLD) {
+            return colour;
+        }
+    }
+
+    // Fallback to black / white
+    let bestColour = "#000000";
+    let bestRatio = 0;
+
+    fallbackColours.forEach(colour => {
+        const ratio = getContrastRatio(
+            hexToRgb(colour),
+            backgroundRgb
+        );
+
+        if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestColour = colour;
+        }
+    });
+
+    return bestColour;
 }
 
 /* --- PERSISTENT PREVIEW DATA --- */
+
 const PREVIEW_ITEMS = [
-  { name: "Cheese Burger", status: "Cooking", qty: 1, mods: ["No Onions", "Extra Cheese"], si: "★ Allergy: Nut" },
-  { name: "Large Fries", status: "Yet To Start", qty: 2, mods: [], si: "" },
-  { name: "Vanilla Shake", status: "Bumped", qty: 1, mods: ["Whipped Cream"], si: "" }
+    {
+        name: "Cheese Burger",
+        status: "Cooking",
+        qty: 1,
+        mods: ["No Onions", "Extra Cheese"],
+        si: "★ Allergy: Nut"
+    },
+    {
+        name: "Large Fries",
+        status: "Yet To Start",
+        qty: 2,
+        mods: [],
+        si: ""
+    },
+    {
+        name: "Vanilla Shake",
+        status: "Bumped",
+        qty: 1,
+        mods: ["Whipped Cream"],
+        si: ""
+    }
 ];
 
 /* --- STATE --- */
-let activeFulfillments = [{ type: "Dine In", bg: "#d1e7dd" }];
+
+let activeFulfillments = [
+    {
+        type: "Dine In",
+        bg: "#d1e7dd"
+    }
+];
+
 let activeStatusConfigs = [
-  { type: "Cooking", bg: "#F39C12" },
-  { type: "Bumped", bg: "#27AE60" }
+    {
+        type: "Cooking",
+        bg: "#F39C12"
+    },
+    {
+        type: "Bumped",
+        bg: "#27AE60"
+    }
 ];
 
 /* --- FULFILLMENT LOGIC --- */
+
 function renderFulfillments() {
-  const tbody = document.getElementById("fulfillmentTbody");
-  tbody.innerHTML = activeFulfillments.map((f, i) => `
-    <tr>
-      <td>${f.type}</td>
-      <td><input type="color" value="${f.bg}" oninput="activeFulfillments[${i}].bg=this.value; updatePreview()"></td>
-      <td><button class="icon-btn" onclick="activeFulfillments.splice(${i},1); renderFulfillments()">🗑</button></td>
-    </tr>
-  `).join('');
-  updatePreview();
+    const tbody = document.getElementById("fulfillmentTbody");
+
+    tbody.innerHTML = activeFulfillments.map((f, i) => `
+        <tr>
+            <td>${f.type}</td>
+            <td>
+                <input type="color"
+                       value="${f.bg}"
+                       oninput="activeFulfillments[${i}].bg=this.value; updatePreview()">
+            </td>
+            <td>
+                <button class="icon-btn"
+                        onclick="activeFulfillments.splice(${i},1); renderFulfillments()">🗑</button>
+            </td>
+        </tr>
+    `).join("");
+
+    updatePreview();
 }
-function addFulfillmentRow() { activeFulfillments.push({ type: "Take Out", bg: "#fff3cd" }); renderFulfillments(); }
+
+function addFulfillmentRow() {
+    activeFulfillments.push({
+        type: "Take Out",
+        bg: "#fff3cd"
+    });
+
+    renderFulfillments();
+}
 
 /* --- STATUS LOGIC --- */
+
 function renderStatusTable() {
-  const tbody = document.getElementById("statusTbody");
-  tbody.innerHTML = activeStatusConfigs.map((s, i) => {
-    const fg = getContrast(s.bg);
-    return `
-      <tr>
-        <td>${s.type}</td>
-        <td><input type="color" value="${s.bg}" oninput="activeStatusConfigs[${i}].bg=this.value; renderStatusTable()"></td>
-        <td><div style="background:${s.bg}; color:${fg}; padding:4px 8px; border-radius:3px; display:inline-block; font-weight:bold;">${fg}</div></td>
-        <td><button class="icon-btn" onclick="activeStatusConfigs.splice(${i},1); renderStatusTable()">🗑</button></td>
-      </tr>
-    `;
-  }).join('');
-  updatePreview();
+    const tbody = document.getElementById("statusTbody");
+
+    tbody.innerHTML = activeStatusConfigs.map((s, i) => {
+        const fg = getBestForeground(s.bg);
+
+        return `
+            <tr>
+                <td>${s.type}</td>
+                <td>
+                    <input type="color"
+                           value="${s.bg}"
+                           oninput="activeStatusConfigs[${i}].bg=this.value; renderStatusTable()">
+                </td>
+                <td>
+                    <div style="
+                        background:${s.bg};
+                        color:${fg};
+                        padding:4px 8px;
+                        border-radius:3px;
+                        display:inline-block;
+                        font-weight:bold;
+                    ">
+                        ${fg}
+                    </div>
+                </td>
+                <td>
+                    <button class="icon-btn"
+                            onclick="activeStatusConfigs.splice(${i},1); renderStatusTable()">🗑</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    updatePreview();
 }
-function addStatusRow() { activeStatusConfigs.push({ type: "Yet To Start", bg: "#34495E" }); renderStatusTable(); }
+
+function addStatusRow() {
+    activeStatusConfigs.push({
+        type: "Yet To Start",
+        bg: "#34495E"
+    });
+
+    renderStatusTable();
+}
 
 /* --- PREVIEW LOGIC --- */
+
 function updatePreview() {
-  // 1. Chit Level Colors
-  const openBg = document.getElementById("openColor").value;
-  const startBg = document.getElementById("startColor").value;
-  const chitBody = document.getElementById("kdsPreview");
-  
-  // Apply Start Button
-  const startBtn = document.getElementById("prev-start");
-  startBtn.style.background = startBg;
-  startBtn.style.color = getContrast(startBg);
+    const openBg = document.getElementById("openColor").value;
+    const startBg = document.getElementById("startColor").value;
+    const chitBody = document.getElementById("kdsPreview");
 
-  // Apply Fulfillment / Open Override
-  const fulfillBar = document.getElementById("prev-fulfill");
-  if(activeFulfillments[0]) {
-    chitBody.style.background = activeFulfillments[0].bg;
-    fulfillBar.innerText = activeFulfillments[0].type;
-  } else {
-    chitBody.style.background = openBg;
-    fulfillBar.innerText = "DEFAULT";
-  }
+    // Start button
+    const startBtn = document.getElementById("prev-start");
+    startBtn.style.background = startBg;
+    startBtn.style.color = getBestForeground(startBg);
 
-  // 2. Item List Rendering
-  const list = document.getElementById("prev-items-list");
-  const globalItemColor = document.getElementById("itemColor").value;
-  const isBold = document.getElementById("itemBold").checked ? 'bold' : 'normal';
-  const isUnderline = document.getElementById("itemUnderline").checked ? 'underline' : 'none';
-  const iSize = document.getElementById("itemSize").value;
+    // Fulfillment background
+    const fulfillBar = document.getElementById("prev-fulfill");
 
-  list.innerHTML = PREVIEW_ITEMS.map(item => {
-    // Find color config for this status
-    const config = activeStatusConfigs.find(c => c.type === item.status);
-    
-    // Status BG vs Default
-    const rowBg = config ? config.bg : "transparent";
-    // Text Color: If row has BG, auto-contrast it. Else use Global Override.
-    const rowFg = rowBg !== "transparent" ? getContrast(rowBg) : globalItemColor;
+    if (activeFulfillments.length > 0) {
+        chitBody.style.background = activeFulfillments[0].bg;
+        fulfillBar.innerText = activeFulfillments[0].type;
+    } else {
+        chitBody.style.background = openBg;
+        fulfillBar.innerText = "DEFAULT";
+    }
 
-    return `
-      <div class="item-row" style="background: ${rowBg}; color: ${rowFg};">
-        <div class="item-main" style="font-weight: ${isBold}; text-decoration: ${isUnderline}; font-size: ${iSize};">
-          <span>${item.qty} ${item.name}</span>
-          <span>${getStatusIcon(item.status)}</span>
-        </div>
-        ${item.mods.map(m => `<div class="item-sub">↳ ${m}</div>`).join('')}
-        ${item.si ? `<div class="item-sub" style="font-style: italic;">${item.si}</div>` : ''}
-      </div>
-    `;
-  }).join('');
+    // Item styling
+    const list = document.getElementById("prev-items-list");
+    const globalItemColor = document.getElementById("itemColor").value;
+    const isBold = document.getElementById("itemBold").checked ? "bold" : "normal";
+    const isUnderline = document.getElementById("itemUnderline").checked ? "underline" : "none";
+    const iSize = document.getElementById("itemSize").value;
+
+    list.innerHTML = PREVIEW_ITEMS.map(item => {
+        const config = activeStatusConfigs.find(c => c.type === item.status);
+
+        const rowBg = config ? config.bg : "transparent";
+
+        const rowFg = rowBg !== "transparent"
+            ? getBestForeground(rowBg)
+            : globalItemColor;
+
+        return `
+            <div class="item-row" style="background:${rowBg}; color:${rowFg};">
+                <div class="item-main"
+                     style="
+                        font-weight:${isBold};
+                        text-decoration:${isUnderline};
+                        font-size:${iSize};
+                     ">
+                    <span>${item.qty} ${item.name}</span>
+                    <span>${getStatusIcon(item.status)}</span>
+                </div>
+
+                ${item.mods.map(m => `
+                    <div class="item-sub">↳ ${m}</div>
+                `).join("")}
+
+                ${item.si ? `
+                    <div class="item-sub" style="font-style: italic;">
+                        ${item.si}
+                    </div>
+                ` : ""}
+            </div>
+        `;
+    }).join("");
 }
 
 function getStatusIcon(status) {
-  switch(status) {
-    case "Cooking": return "🔥";
-    case "Bumped": return "✅";
-    case "Hold": return "✋";
-    case "Voided": return "🚫";
-    default: return "⏳";
-  }
+    switch (status) {
+        case "Cooking":
+            return "🔥";
+        case "Bumped":
+            return "✅";
+        case "Hold":
+            return "✋";
+        case "Voided":
+            return "🚫";
+        default:
+            return "⏳";
+    }
 }
 
-/* INITIALIZE */
+/* --- INITIALIZE --- */
+
 renderFulfillments();
 renderStatusTable();
+
 </script>
 
 </body>
